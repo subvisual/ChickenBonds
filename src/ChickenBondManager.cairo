@@ -5,7 +5,7 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_block_timestamp
-from starkware.starknet.common.syscalls import get_caller_address
+from starkware.starknet.common.syscalls import (get_caller_address, get_contract_address )
 from starkware.cairo.common.alloc import alloc
 
 @contract_interface
@@ -17,6 +17,12 @@ namespace IBondNFT {
 @contract_interface
 namespace IBLUSD {
     func mint(to: felt, amount: Uint256) {
+    }
+}
+
+@contract_interface
+namespace ILUSD {
+    func transfer_from( sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
     }
 }
 
@@ -51,6 +57,10 @@ namespace IMockYearnVault {
 }
 
 @storage_var
+func lusd_address() -> (value: felt) {
+}
+
+@storage_var
 func blusd_address() -> (value: felt) {
 }
 
@@ -81,11 +91,13 @@ func total_pending_LUSD() -> (value: felt) {
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     _bond_address: felt,
+    _lusd_address: felt,
     _blusd_address: felt,
     _mock_yearn_vault_address: felt,
     _mock_curve_pool_address: felt,
 ) {
     bond_address.write(_bond_address);
+    lusd_address.write(_lusd_address);
     blusd_address.write(_blusd_address);
     mock_yearn_vault_address.write(_mock_yearn_vault_address);
     mock_curve_pool_address.write(_mock_curve_pool_address);
@@ -95,8 +107,9 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
 @external
 func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    lusd_amount: felt, value: felt
+    lusd_amount: felt//, value: felt
 ) {
+    alloc_locals;
     let (caller_address) = get_caller_address();
 
     let token_id: Uint256 = Uint256(1, 0);
@@ -110,7 +123,7 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert [ptr + 1] = 16;
     assert [ptr + 2] = 25;
 
-    // let (value)  = bond_address.read();
+     let (value)  = bond_address.read();
 
     IBondNFT.safeMint(
         contract_address=value,
@@ -129,11 +142,34 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (total_pending) = total_pending_LUSD.read();
     total_pending_LUSD.write(total_pending + lusd_amount);
 
-    // lusdToken.transferFrom(msg.sender, address(this), _lusdAmount);
+    let (this_contract_address) = get_contract_address();
 
-    // yearnLUSDVault.deposit(_lusdAmount);
+     let (lusd_add)  = lusd_address.read();
+     let lusd_amount_256 = Uint256(lusd_amount,0);
+    ILUSD.transfer_from(contract_address=lusd_add,sender=caller_address, recipient=this_contract_address, amount=lusd_amount_256);
+
+     let (yearn_add)  = mock_yearn_vault_address.read();
+    IMockYearnVault.deposit(contract_address=yearn_add, _tokenAmount= lusd_amount);
 
     return ();
+}
+
+
+//https://github.com/liquity/ChickenBond/blob/f51be4cec25f941a030ccc68d4bf2b66d1340674/LUSDChickenBonds/src/ChickenBondManager.sol
+@external
+func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    //requires caller be bond owner
+
+    
+) {
+    
+}
+
+@external
+func chicken_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arguments
+) {
+    
 }
 
 @view
