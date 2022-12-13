@@ -6,3 +6,6 @@ lib-path = "lib"
 ChickenBondManager = ["src/ChickenBondManager.cairo"]
 BLUSD = ["src/BLUSD.cairo"]
 BondNFT = ["src/BondNFT.cairo"]
+MockYearnVault = ["src/mock/MockYearnVault.cairo"]
+MockLUSDToken = ["src/mock/MockLUSDToken.cairo"]
+MockCurvePool = ["src/mock/MockCurvePool.cairo"]
