@@ -7,6 +7,7 @@ from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_block_timestamp
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 from starkware.cairo.common.alloc import alloc
+from openzeppelin.security.safemath.library import SafeUint256
 
 @contract_interface
 namespace IBondNFT {
@@ -24,41 +25,57 @@ namespace IBLUSD {
 
     func totalSupply() -> (totalSupply: Uint256) {
     }
+
+    func transfer_from(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
+    }
+    func transfer(recipient: felt, amount: Uint256) -> (success: felt) {
+    }
+
+    func balanceOf(account: felt) -> (balance: Uint256) {
+    }
 }
 
 @contract_interface
 namespace ILUSD {
     func transfer_from(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
     }
+
+    func transfer(recipient: felt, amount: Uint256) -> (success: felt) {
+    }
+    func balanceOf(account: felt) -> (balance: Uint256) {
+    }
 }
 
 @contract_interface
 namespace ICurvePool {
-    func add_liquidity(_LUSD3CRVAmount: felt) {
+    func add_liquidity(_LUSD3CRVAmount: Uint256) {
     }
 
-    func remove_liquidity(_LUSD3CRVAmount: felt) {
+    func remove_liquidity(_LUSD3CRVAmount: Uint256) {
     }
 
-    func calcLUSDToLUSD3CRV(_LUSD3CRVAmount: felt) {
+    func calcLUSDToLUSD3CRV(_LUSD3CRVAmount: Uint256) {
     }
 
-    func calcLUSD3CRVToLUSD(_LUSD3CRVAmount: felt) {
+    func calcLUSD3CRVToLUSD(_LUSD3CRVAmount: Uint256) {
     }
 }
 
 @contract_interface
 namespace IMockYearnVault {
-    func deposit(_tokenAmount: felt) {
+    func deposit(_tokenAmount: Uint256) {
     }
 
-    func withdraw(_tokenAmount: felt) {
+    func withdraw(_tokenAmount: Uint256) {
     }
 
-    func calcTokenToYToken(_tokenAmount: felt) {
+    func calcTokenToYToken(_tokenAmount: Uint256) {
     }
 
-    func calcYTokenToToken(_yTokenAmount: felt) -> (success: felt) {
+    func calcYTokenToToken(_yTokenAmount: Uint256) -> (success: Uint256) {
+    }
+
+    func balanceOf(account: felt) -> (balance: Uint256) {
     }
 }
 
@@ -74,7 +91,10 @@ func blusd_address_() -> (value: felt) {
 func bond_address_() -> (value: felt) {
 }
 @storage_var
-func mock_yearn_vault_address_() -> (value: felt) {
+func mock_yearn_lusd_vault_address_() -> (value: felt) {
+}
+@storage_var
+func mock_yearn_curve_vault_address_() -> (value: felt) {
 }
 
 @storage_var
@@ -82,7 +102,7 @@ func mock_curve_pool_address_() -> (value: felt) {
 }
 
 struct BondData {
-    lusd_amount: felt,
+    lusd_amount: Uint256,
     start_time: felt,
 }
 
@@ -91,7 +111,7 @@ func id_to_bond_data_(id: Uint256) -> (data: BondData) {
 }
 
 @storage_var
-func total_pending_LUSD_() -> (value: felt) {
+func total_pending_LUSD_() -> (value: Uint256) {
 }
 
 @constructor
@@ -99,21 +119,23 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     _bond_address: felt,
     _lusd_address: felt,
     _blusd_address: felt,
-    _mock_yearn_vault_address: felt,
     _mock_curve_pool_address: felt,
+    _mock_yearn_lusd_vault_address: felt,
+    _mock_yearn_curve_vault_address: felt,
 ) {
     bond_address_.write(_bond_address);
     lusd_address_.write(_lusd_address);
     blusd_address_.write(_blusd_address);
-    mock_yearn_vault_address_.write(_mock_yearn_vault_address);
     mock_curve_pool_address_.write(_mock_curve_pool_address);
+    mock_yearn_lusd_vault_address_.write(_mock_yearn_lusd_vault_address);
+    mock_yearn_curve_vault_address_.write(_mock_yearn_curve_vault_address);
 
     return ();
 }
 
 @external
 func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    lusd_amount: felt
+    lusd_amount: Uint256
 ) {
     alloc_locals;
     let (caller_address) = get_caller_address();
@@ -141,20 +163,20 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     id_to_bond_data_.write(token_id, bond_data);
 
     let (total_pending) = total_pending_LUSD_.read();
-    total_pending_LUSD_.write(total_pending + lusd_amount);
+    let (new_amount: Uint256) = SafeUint256.add(total_pending, lusd_amount);
+    total_pending_LUSD_.write(new_amount);
 
     let (this_contract_address) = get_contract_address();
     let (lusd_address) = lusd_address_.read();
-    let lusd_amount_256 = Uint256(lusd_amount, 0);
     ILUSD.transfer_from(
         contract_address=lusd_address,
         sender=caller_address,
         recipient=this_contract_address,
-        amount=lusd_amount_256,
+        amount=lusd_amount,
     );
 
-    let (yearn_vault_address) = mock_yearn_vault_address_.read();
-    IMockYearnVault.deposit(contract_address=yearn_vault_address, _tokenAmount=lusd_amount);
+    let (yearn_lusd_vault_address) = mock_yearn_lusd_vault_address_.read();
+    IMockYearnVault.deposit(contract_address=yearn_lusd_vault_address, _tokenAmount=lusd_amount);
     return ();
 }
 
@@ -172,19 +194,22 @@ func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (data: BondData) = id_to_bond_data_.read(id=_bond_id);
     // totalPendingLUSD -= bondedLUSD;
     let (total_pending) = total_pending_LUSD_.read();
-    total_pending_LUSD_.write(total_pending - data.lusd_amount);
+    let (new_total: Uint256) = SafeUint256.sub_le(total_pending, data.lusd_amount);
+    total_pending_LUSD_.write(new_total);
 
     // delete idToBondData[_bondID];
 
-    let (yearn_vault_address) = mock_yearn_vault_address_.read();
+    let (yearn_lusd_vault_address) = mock_yearn_lusd_vault_address_.read();
 
     // uint yTokensToBurn = yearnLUSDVault.calcYTokenToToken(bondedLUSD);
-    let (y_tokens_to_burn: felt) = IMockYearnVault.calcYTokenToToken(
-        contract_address=yearn_vault_address, _yTokenAmount=data.lusd_amount
+    let (y_tokens_to_burn: Uint256) = IMockYearnVault.calcYTokenToToken(
+        contract_address=yearn_lusd_vault_address, _yTokenAmount=data.lusd_amount
     );
 
     // yearnLUSDVault.withdraw(yTokensToBurn);
-    IMockYearnVault.withdraw(contract_address=yearn_vault_address, _tokenAmount=y_tokens_to_burn);
+    IMockYearnVault.withdraw(
+        contract_address=yearn_lusd_vault_address, _tokenAmount=y_tokens_to_burn
+    );
 
     // Send bonded LUSD back to caller and burn their bond NFT
     // lusdToken.transfer(msg.sender, bondedLUSD);
@@ -192,9 +217,13 @@ func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (caller_address) = get_caller_address();
     let (this_contract_address) = get_contract_address();
     let (lusd_address) = lusd_address_.read();
-    let amount_to_transfer = Uint256(low=data.lusd_amount, high=0);
 
-    // ILUSD.transfer_from(contract_address=lusd_address,sender=this_contract_address, recipient=caller_address  , amount= amount_to_transfer);
+    ILUSD.transfer_from(
+        contract_address=lusd_address,
+        sender=this_contract_address,
+        recipient=caller_address,
+        amount=data.lusd_amount,
+    );
     // bondNFT.burn(_bondID);
     let (bond_address) = bond_address_.read();
     IBondNFT.transferFrom(
@@ -218,18 +247,19 @@ func chicken_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     let (accrued_LUSD) = _calc_accrued_SLUD(data);
 
     // _requireCapGreaterThanAccruedSLUSD(accruedLUSD, bond.lusdAmount);
+    // TODO DO THIS REQUIRE
 
     // delete idToBondData[_bondID];
     // totalPendingLUSD -= bond.lusdAmount;
     let (total_pending) = total_pending_LUSD_.read();
-    total_pending_LUSD_.write(total_pending - data.lusd_amount);
+    let (total: Uint256) = SafeUint256.sub_le(total_pending, data.lusd_amount);
+    total_pending_LUSD_.write(total);
 
     // sLUSDToken.mint(msg.sender, accruedLUSD);
     let (blusd_address) = blusd_address_.read();
-    let lusd_amount_256 = Uint256(accrued_LUSD, 0);
     let (caller_address) = get_caller_address();
 
-    IBLUSD.mint(contract_address=blusd_address, to=caller_address, amount=lusd_amount_256);
+    IBLUSD.mint(contract_address=blusd_address, to=caller_address, amount=accrued_LUSD);
 
     // bondNFT.burn(_bondID);
     let (bond_address) = bond_address_.read();
@@ -242,7 +272,7 @@ func chicken_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 }
 
 func redeem{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    _sLUSD_to_redeem: felt
+    _sLUSD_to_redeem: Uint256
 ) {
     alloc_locals;
     // uint fractionOfSLUSDToRedeem = _sLUSDToRedeem * 1e18 / sLUSDToken.totalSupply();
@@ -251,79 +281,122 @@ func redeem{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (blusd_address) = blusd_address_.read();
     let (total_supply: Uint256) = IBLUSD.totalSupply(contract_address=blusd_address);
 
-    // let (fractionOfSLUSDToRedeem :Uint256) = _sLUSD_to_redeem * (1*10**18) / total_supply;
+    let decimals = Uint256(1 * 10 ** 18, 0);
+
+    let (total_units: Uint256) = SafeUint256.mul(_sLUSD_to_redeem, decimals);
+    let (fractionOfSLUSDToRedeem: Uint256, o: Uint256) = SafeUint256.div_rem(
+        total_units, total_supply
+    );
 
     // // Calculate redemption fraction to withdraw, given that we leave the fee inside the system
     // uint fractionOfAcquiredLUSDToWithdraw = fractionOfSLUSDToRedeem * (1e18 - calcRedemptionFeePercentage()) / 1e18;
 
-    // let (fractionOfAcquiredLUSDToWithdraw : Uint256) = fractionOfSLUSDToRedeem * (1e18 - calcRedemptionFeePercentage()) / 1e18;
+    let (redemption_fee: Uint256) = calcRedemptionFeePercentage();
+    let (normalized_percentage: Uint256) = SafeUint256.sub_le(decimals, redemption_fee);
+    let (acquired_LUSD: Uint256) = SafeUint256.mul(fractionOfSLUSDToRedeem, normalized_percentage);
+    let (fraction_of_acquired_LUSD_to_withdraw: Uint256, o: Uint256) = SafeUint256.div_rem(
+        normalized_percentage, decimals
+    );
 
     // uint yTokensToWithdrawFromLUSDVault = yearnLUSDVault.balanceOf(address(this)) * fractionOfAcquiredLUSDToWithdraw / 1e18;
-    // uint yTokensToWithdrawFromCurveVault = yearnCurveVault.balanceOf(address(this)) * fractionOfAcquiredLUSDToWithdraw / 1e18;
+    let (this_address) = get_contract_address();
+    let (yearn_lusd_vault_address) = mock_yearn_lusd_vault_address_.read();
+    let (this_address_balance: Uint256) = IMockYearnVault.balanceOf(
+        contract_address=yearn_lusd_vault_address, account=this_address
+    );
+    let (fraction: Uint256) = SafeUint256.mul(
+        fractionOfSLUSDToRedeem, fraction_of_acquired_LUSD_to_withdraw
+    );
+    let (y_tokens_to_withdraw_from_LUSD_vault: Uint256, o: Uint256) = SafeUint256.div_rem(
+        fraction, decimals
+    );
 
     // // The LUSD and LUSD3CRV deltas from SP/Curve withdrawals are the amounts to send to the redeemer
     // uint lusdBalanceBefore = lusdToken.balanceOf(address(this));
-    // uint LUSD3CRVBalanceBefore = curvePool.balanceOf(address(this));
+
+    let (lusd_address) = lusd_address_.read();
+    let (lusd_balance_before: Uint256) = ILUSD.balanceOf(
+        contract_address=lusd_address, account=this_address
+    );
 
     // yearnLUSDVault.withdraw(yTokensToWithdrawFromLUSDVault); // obtain LUSD from Yearn
-    // yearnCurveVault.withdraw(yTokensToWithdrawFromCurveVault); // obtain LUSD3CRV from Yearn
-
-    // uint LUSD3CRVDelta = curvePool.balanceOf(address(this)) - LUSD3CRVBalanceBefore;
-    // curvePool.remove_liquidity(LUSD3CRVDelta); // obtain LUSD from Curve
+    IMockYearnVault.withdraw(
+        contract_address=yearn_lusd_vault_address, _tokenAmount=y_tokens_to_withdraw_from_LUSD_vault
+    );
 
     // uint lusdBalanceDelta = lusdToken.balanceOf(address(this)) - lusdBalanceBefore;
+
+    let (lusd_balance_now: Uint256) = ILUSD.balanceOf(
+        contract_address=lusd_address, account=this_address
+    );
+
+    let (lusd_balance_delta: Uint256) = SafeUint256.sub_le(lusd_balance_now, lusd_balance_before);
 
     // // Burn the redeemed sLUSD
     // sLUSDToken.burn(msg.sender, _sLUSDToRedeem);
 
+    let (caller_address) = get_caller_address();
+    let (blusd_address) = blusd_address_.read();
+    IBLUSD.transfer_from(
+        contract_address=blusd_address, sender=caller_address, recipient=0, amount=_sLUSD_to_redeem
+    );
+
     // // Send the LUSD to the redeemer
     // lusdToken.transfer(msg.sender, lusdBalanceDelta);
+
+    ILUSD.transfer(
+        contract_address=lusd_address, recipient=caller_address, amount=lusd_balance_delta
+    );
+
     return ();
 }
 
 func calc_accrued_SLUD{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     _bond_id: Uint256
-) -> (res: felt) {
+) -> (res: Uint256) {
     let (data: BondData) = id_to_bond_data_.read(id=_bond_id);
-    let (res: felt) = _calc_accrued_SLUD(data);
+    let (res: Uint256) = _calc_accrued_SLUD(data);
     return (res=res);
 }
 
 func _calc_accrued_SLUD{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     bond: BondData
-) -> (res: felt) {
+) -> (res: Uint256) {
     // if (bond.start_time == 0) {return 0;}
 
     // uint bondDuration = (block.timestamp - bond.start_time);
     let (block_timestamp) = get_block_timestamp();
     let bondDuration = block_timestamp - bond.start_time;
+    let bondDuration256 = Uint256(bondDuration, 0);
 
     // return bond.lusdAmount * bondDuration / (SECONDS_IN_ONE_HOUR * 100);
-    let (res: felt) = _calc_accrued_formula(bond.lusd_amount, bondDuration);
+    let (res: Uint256) = _calc_accrued_formula(bond.lusd_amount, bondDuration256);
 
     return (res=res);
 }
 
 func _calc_accrued_formula{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    lusd_amount: felt, bond_duration: felt
-) -> (res: felt) {
-    const MILISECONDS_IN_ONE_HOUR = 360000;
-    let total = lusd_amount * bond_duration;
-    let res = total;  // / MILISECONDS_IN_ONE_HOUR;
+    lusd_amount: Uint256, bond_duration: Uint256
+) -> (res: Uint256) {
+    let MILISECONDS_IN_ONE_HOUR = Uint256(360000, 0);
+
+    let (total: Uint256) = SafeUint256.mul(lusd_amount, bond_duration);
+    let (res: Uint256, o: Uint256) = SafeUint256.div_rem(total, MILISECONDS_IN_ONE_HOUR);
 
     return (res=res);
 }
 
 func calcRedemptionFeePercentage{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (fee: felt) {
-    const fee = 5 * 10 ** 16;
-    return (fee=fee);
+    ) -> (res: Uint256) {
+    let fee = 5 * 10 ** 16;
+    let res = Uint256(fee, 0);
+    return (res=res);
 }
 
 @view
 func get_id_to_bond_data{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     id: Uint256
-) -> (lusd_amount: felt, start_time: felt) {
+) -> (lusd_amount: Uint256, start_time: felt) {
     tempvar lusd_amount: felt;
     tempvar start_time: felt;
 
