@@ -11,7 +11,7 @@ from openzeppelin.security.safemath.library import SafeUint256
 
 @contract_interface
 namespace IBondNFT {
-    func safeMint(to: felt, tokenId: Uint256, data_len: felt, data: felt*, tokenURI: felt) {
+    func mint(to: felt, tokenId: Uint256, tokenURI: felt) {
     }
 
     func transferFrom(from_: felt, to: felt, tokenId: Uint256) {
@@ -26,7 +26,7 @@ namespace IBLUSD {
     func totalSupply() -> (totalSupply: Uint256) {
     }
 
-    func transfer_from(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
+    func transferFrom(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
     }
     func transfer(recipient: felt, amount: Uint256) -> (success: felt) {
     }
@@ -37,7 +37,7 @@ namespace IBLUSD {
 
 @contract_interface
 namespace ILUSD {
-    func transfer_from(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
+    func transferFrom(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
     }
 
     func transfer(recipient: felt, amount: Uint256) -> (success: felt) {
@@ -149,14 +149,7 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert [data_ptr + 2] = 25;
 
     let (bond_address) = bond_address_.read();
-    IBondNFT.safeMint(
-        contract_address=bond_address,
-        to=caller_address,
-        tokenId=token_id,
-        data_len=len,
-        data=data_ptr,
-        tokenURI=len,
-    );
+    IBondNFT.mint(contract_address=bond_address, to=caller_address, tokenId=token_id, tokenURI=len);
 
     let (timestamp) = get_block_timestamp();
     let bond_data = BondData(lusd_amount=lusd_amount, start_time=timestamp);
@@ -168,7 +161,7 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
     let (this_contract_address) = get_contract_address();
     let (lusd_address) = lusd_address_.read();
-    ILUSD.transfer_from(
+    ILUSD.transferFrom(
         contract_address=lusd_address,
         sender=caller_address,
         recipient=this_contract_address,
@@ -181,7 +174,7 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }
 
 // https://github.com/liquity/ChickenBond/blob/f51be4cec25f941a030ccc68d4bf2b66d1340674/LUSDChickenBonds/src/ChickenBondManager.sol
-// @external
+@external
 func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     _bond_id: Uint256
 ) {
@@ -218,7 +211,7 @@ func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (this_contract_address) = get_contract_address();
     let (lusd_address) = lusd_address_.read();
 
-    ILUSD.transfer_from(
+    ILUSD.transferFrom(
         contract_address=lusd_address,
         sender=this_contract_address,
         recipient=caller_address,
@@ -337,7 +330,7 @@ func redeem{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (caller_address) = get_caller_address();
     let (blusd_address) = blusd_address_.read();
-    IBLUSD.transfer_from(
+    IBLUSD.transferFrom(
         contract_address=blusd_address, sender=caller_address, recipient=0, amount=_sLUSD_to_redeem
     );
 
@@ -403,4 +396,20 @@ func get_id_to_bond_data{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     let (data: BondData) = id_to_bond_data_.read(id=id);
 
     return (lusd_amount=data.lusd_amount, start_time=data.start_time);
+}
+
+@view
+func get_lusd_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    lusd_address: felt
+) {
+    let (res) = lusd_address_.read();
+    return (lusd_address=res);
+}
+
+@view
+func get_bond_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    bond_address: felt
+) {
+    let (res) = bond_address_.read();
+    return (bond_address=res);
 }

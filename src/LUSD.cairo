@@ -10,7 +10,7 @@ from openzeppelin.access.ownable.library import Ownable
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner: felt) {
-    ERC20.initializer('CurvePool', 'CurvePool', 18);
+    ERC20.initializer('LUSD', 'LUSD', 18);
     Ownable.initializer(owner);
     return ();
 }

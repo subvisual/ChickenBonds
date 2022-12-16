@@ -8,6 +8,7 @@ from starkware.cairo.common.uint256 import Uint256
 from openzeppelin.token.erc721.library import ERC721
 from openzeppelin.introspection.erc165.library import ERC165
 from openzeppelin.access.ownable.library import Ownable
+from starkware.starknet.common.syscalls import get_caller_address
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner: felt) {
@@ -133,8 +134,18 @@ func renounceOwnership{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func safeMint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     to: felt, tokenId: Uint256, data_len: felt, data: felt*, tokenURI: felt
 ) {
-    Ownable.assert_only_owner();
+    // Ownable.assert_only_owner();
     ERC721._safe_mint(to, tokenId, data_len, data);
+    // ERC721._set_token_uri(tokenId, tokenURI);
+    return ();
+}
+
+@external
+func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    to: felt, tokenId: Uint256, tokenURI: felt
+) {
+    Ownable.assert_only_owner();
+    ERC721._mint(to, tokenId);
     ERC721._set_token_uri(tokenId, tokenURI);
     return ();
 }

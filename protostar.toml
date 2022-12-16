@@ -1,11 +1,13 @@
 [project]
-protostar-version = "0.8.1"
+protostar-version = "0.9.0"
 lib-path = "lib"
 
 [contracts]
 ChickenBondManager = ["src/ChickenBondManager.cairo"]
 BLUSD = ["src/BLUSD.cairo"]
+LUSD = ["src/LUSD.cairo"]
 BondNFT = ["src/BondNFT.cairo"]
-MockYearnVault = ["src/mock/MockYearnVault.cairo"]
+MockYearnLUSDVault = ["src/mock/MockYearnLUSDVault.cairo"]
+MockYearnCurveVault = ["src/mock/MockYearnCurveVault.cairo"]
 MockLUSDToken = ["src/mock/MockLUSDToken.cairo"]
 MockCurvePool = ["src/mock/MockCurvePool.cairo"]

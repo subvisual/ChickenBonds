@@ -10,7 +10,7 @@ from openzeppelin.access.ownable.library import Ownable
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner: felt) {
-    ERC20.initializer('CurvePool', 'CurvePool', 18);
+    ERC20.initializer('YearnCurve', 'YearnCurve', 18);
     Ownable.initializer(owner);
     return ();
 }
@@ -122,5 +122,25 @@ func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) {
     Ownable.assert_only_owner();
     ERC20._mint(to, amount);
+    return ();
+}
+
+@external
+func deposit(_tokenAmount: felt) {
+    return ();
+}
+
+@external
+func withdraw(_tokenAmount: felt) {
+    return ();
+}
+
+@external
+func calcTokenToYToken(_tokenAmount: felt) {
+    return ();
+}
+
+@external
+func calcYTokenToToken(_yTokenAmount: felt) {
     return ();
 }
