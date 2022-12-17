@@ -25,9 +25,10 @@ namespace ILUSD {
 func token_address_() -> (res: felt) {
 }
 
-
 @constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner: felt, token_address) {
+func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    owner: felt, token_address
+) {
     ERC20.initializer('YearnLUSD', 'YearnLUSD', 18);
     Ownable.initializer(owner);
     token_address_.write(token_address);
@@ -145,8 +146,9 @@ func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 @external
-func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(_tokenAmount: Uint256) {
-
+func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    _tokenAmount: Uint256
+) {
     alloc_locals;
     let (caller_address) = get_caller_address();
     let (this_contract_address) = get_contract_address();
@@ -165,7 +167,9 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(_t
 }
 
 @external
-func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(_lp_shares: Uint256) {
+func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    _lp_shares: Uint256
+) {
     alloc_locals;
     let (_tokenAmount) = calcTokenToYToken(_lp_shares);
 
@@ -173,18 +177,14 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(_
     let (this_contract_address) = get_contract_address();
     let (lusd_address) = token_address_.read();
 
-    ILUSD.transfer(
-        contract_address=lusd_address,
-        recipient=caller_address,
-        amount=_tokenAmount,
-    );
+    ILUSD.transfer(contract_address=lusd_address, recipient=caller_address, amount=_tokenAmount);
 
     ERC20._burn(caller_address, _lp_shares);
     return ();
 }
 
 @external
-func calcTokenToYToken(_tokenAmount: Uint256)  -> (res: Uint256){
+func calcTokenToYToken(_tokenAmount: Uint256) -> (res: Uint256) {
     return (res=_tokenAmount);
 }
 
