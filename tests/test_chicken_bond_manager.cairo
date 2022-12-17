@@ -110,6 +110,9 @@ namespace ChickenBondManager {
 
     func get_bond_address() -> (bond_address: felt) {
     }
+
+    func get_total_pending_LUSD() -> ( pending: Uint256) {
+    }
 }
 
 const ALICE = 111;
@@ -123,6 +126,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     local chicken_bonds_: felt;
     local bonds: felt;
     local blusd: felt;
+    local lusd: felt;
     local yearn_lusd: felt;
 
     %{
@@ -130,13 +134,14 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         context.lusd = deploy_contract("./src/LUSD.cairo", [ids.ADMIN]).contract_address
         context.blusd = deploy_contract("./src/BLUSD.cairo", [ids.ADMIN]).contract_address
         context.curve_pool = deploy_contract("./src/mock/MockCurvePool.cairo", [ids.ADMIN]).contract_address
-        context.yearn_lusd = deploy_contract("./src/mock/MockYearnLUSDVault.cairo", [ids.ADMIN]).contract_address
+        context.yearn_lusd = deploy_contract("./src/mock/MockYearnLUSDVault.cairo", [ids.ADMIN, context.lusd]).contract_address
         context.yearn_curve = deploy_contract("./src/mock/MockYearnCurveVault.cairo", [ids.ADMIN]).contract_address
         context.chicken_bonds = deploy_contract("./src/ChickenBondManager.cairo", [context.bond, context.lusd, context.blusd, context.curve_pool, context.yearn_lusd, context.yearn_curve]).contract_address
 
         ids.chicken_bonds_ = context.chicken_bonds
         ids.bonds= context.bond
         ids.blusd= context.blusd
+        ids.lusd= context.lusd
         ids.yearn_lusd= context.yearn_lusd
 
         stop_prank_bonds = start_prank(ids.ADMIN, target_contract_address= context.bond)
@@ -154,7 +159,16 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         stop_prank_lusd()
         stop_prank_blusd()
         stop_prank_yearn_lusd()
+
+        stop_prank_lusd = start_prank(context.chicken_bonds, target_contract_address= context.lusd)
     %}
+    ILUSD.approve(contract_address=lusd, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    ILUSD.approve(contract_address=lusd, spender=yearn_lusd, amount=Uint256(100000, 0));
+
+    %{
+        stop_prank_lusd()
+    %}
+    
     return ();
 }
 
@@ -164,6 +178,7 @@ func test_create_bond{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
     local lusd_: felt;
     local bonds_: felt;
     local chicken_bonds_: felt;
+    local yearn_lusd_: felt;
     local alice: felt;
     local admin: felt;
 
@@ -182,9 +197,11 @@ func test_create_bond{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
     %{
         stop_prank_lusd()
         ids.chicken_bonds_ = context.chicken_bonds
+        ids.yearn_lusd_ = context.yearn_lusd 
         stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
     %}
     ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    ILUSD.approve(contract_address=lusd_, spender=yearn_lusd_, amount=Uint256(100000, 0));
 
     let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
     let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
@@ -199,7 +216,13 @@ func test_create_bond{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
 
     ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(50000, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -222,6 +245,7 @@ func test_chicken_out{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
     local lusd_: felt;
     local bonds_: felt;
     local chicken_bonds_: felt;
+    local yearn_lusd_: felt;
     local alice: felt;
     local admin: felt;
 
@@ -240,9 +264,11 @@ func test_chicken_out{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
     %{
         stop_prank_lusd()
         ids.chicken_bonds_ = context.chicken_bonds
+        ids.yearn_lusd_ = context.yearn_lusd 
         stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
     %}
     ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    ILUSD.approve(contract_address=lusd_, spender=yearn_lusd_, amount=Uint256(100000, 0));
 
     let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
     let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
@@ -257,7 +283,13 @@ func test_chicken_out{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
 
     ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(50000, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -310,6 +342,7 @@ func test_chicken_in{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuil
     local blusd_: felt;
     local bonds_: felt;
     local chicken_bonds_: felt;
+    local yearn_lusd_: felt;
     local alice: felt;
     local admin: felt;
 
@@ -329,9 +362,11 @@ func test_chicken_in{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuil
     %{
         stop_prank_lusd()
         ids.chicken_bonds_ = context.chicken_bonds
+        ids.yearn_lusd_ = context.yearn_lusd 
         stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
     %}
     ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    ILUSD.approve(contract_address=lusd_, spender=yearn_lusd_, amount=Uint256(100000, 0));
 
     let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
     let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
@@ -346,7 +381,13 @@ func test_chicken_in{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuil
 
     ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(50000, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -367,7 +408,13 @@ func test_chicken_in{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuil
 
     ChickenBondManager.chicken_in(contract_address=chicken_bonds_, _bond_id=Uint256(1, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(0, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -404,6 +451,7 @@ func test_chicken_in_after_timelapse{syscall_ptr: felt*, range_check_ptr, peders
     local blusd_: felt;
     local bonds_: felt;
     local chicken_bonds_: felt;
+    local yearn_lusd_: felt;
     local alice: felt;
     local admin: felt;
 
@@ -423,9 +471,11 @@ func test_chicken_in_after_timelapse{syscall_ptr: felt*, range_check_ptr, peders
     %{
         stop_prank_lusd()
         ids.chicken_bonds_ = context.chicken_bonds
+        ids.yearn_lusd_ = context.yearn_lusd
         stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
     %}
     ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    ILUSD.approve(contract_address=lusd_, spender=yearn_lusd_, amount=Uint256(100000, 0));
 
     let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
     let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
@@ -440,7 +490,13 @@ func test_chicken_in_after_timelapse{syscall_ptr: felt*, range_check_ptr, peders
 
     ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(50000, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -465,7 +521,13 @@ func test_chicken_in_after_timelapse{syscall_ptr: felt*, range_check_ptr, peders
 
     ChickenBondManager.chicken_in(contract_address=chicken_bonds_, _bond_id=Uint256(1, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(0, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -502,6 +564,7 @@ func test_redeem{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
     local blusd_: felt;
     local bonds_: felt;
     local chicken_bonds_: felt;
+    local yearn_lusd_: felt;
     local alice: felt;
     local admin: felt;
 
@@ -521,9 +584,11 @@ func test_redeem{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
     %{
         stop_prank_lusd()
         ids.chicken_bonds_ = context.chicken_bonds
+        ids.yearn_lusd_ = context.yearn_lusd
         stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
     %}
     ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    ILUSD.approve(contract_address=lusd_, spender=yearn_lusd_, amount=Uint256(100000, 0));
     IBLUSD.approve(contract_address=blusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
 
     let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
@@ -539,7 +604,13 @@ func test_redeem{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
 
     ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(50000, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
@@ -564,7 +635,13 @@ func test_redeem{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*
 
     ChickenBondManager.chicken_in(contract_address=chicken_bonds_, _bond_id=Uint256(1, 0));
 
-    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+    let (pending) = ChickenBondManager.get_total_pending_LUSD(contract_address=chicken_bonds_);
+
+    let (currect_pending) = uint256_eq(pending, Uint256(0, 0));
+
+    assert currect_pending = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=yearn_lusd_, account=chicken_bonds_);
 
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 

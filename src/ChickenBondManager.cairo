@@ -75,7 +75,7 @@ namespace IMockYearnVault {
     func withdraw(_tokenAmount: Uint256) {
     }
 
-    func calcTokenToYToken(_tokenAmount: Uint256) {
+    func calcTokenToYToken(_tokenAmount: Uint256) -> (success: Uint256){
     }
 
     func calcYTokenToToken(_yTokenAmount: Uint256) -> (success: Uint256) {
@@ -426,4 +426,13 @@ func get_bond_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 ) {
     let (res) = bond_address_.read();
     return (bond_address=res);
+}
+
+
+@view
+func get_total_pending_LUSD{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    pending: Uint256
+) {
+    let (res) = total_pending_LUSD_.read();
+    return (pending=res);
 }
