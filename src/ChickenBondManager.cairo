@@ -14,6 +14,9 @@ namespace IBondNFT {
     func mint(to: felt, tokenId: Uint256, tokenURI: felt) {
     }
 
+    func burn( tokenId: Uint256) {
+    }
+
     func transferFrom(from_: felt, to: felt, tokenId: Uint256) {
     }
 }
@@ -21,6 +24,9 @@ namespace IBondNFT {
 @contract_interface
 namespace IBLUSD {
     func mint(to: felt, amount: Uint256) {
+    }
+
+    func burn(account:felt, amount: Uint256) {
     }
 
     func totalSupply() -> (totalSupply: Uint256) {
@@ -191,10 +197,13 @@ func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     total_pending_LUSD_.write(new_total);
 
     // delete idToBondData[_bondID];
+    let bond_data = BondData(lusd_amount=Uint256(0,0), start_time=0);
+    id_to_bond_data_.write(_bond_id, bond_data);
 
-    let (yearn_lusd_vault_address) = mock_yearn_lusd_vault_address_.read();
 
     // uint yTokensToBurn = yearnLUSDVault.calcYTokenToToken(bondedLUSD);
+
+    let (yearn_lusd_vault_address) = mock_yearn_lusd_vault_address_.read();
     let (y_tokens_to_burn: Uint256) = IMockYearnVault.calcYTokenToToken(
         contract_address=yearn_lusd_vault_address, _yTokenAmount=data.lusd_amount
     );
@@ -211,16 +220,15 @@ func chicken_out{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (this_contract_address) = get_contract_address();
     let (lusd_address) = lusd_address_.read();
 
-    ILUSD.transferFrom(
+    ILUSD.transfer(
         contract_address=lusd_address,
-        sender=this_contract_address,
         recipient=caller_address,
         amount=data.lusd_amount,
     );
     // bondNFT.burn(_bondID);
     let (bond_address) = bond_address_.read();
-    IBondNFT.transferFrom(
-        contract_address=bond_address, from_=caller_address, to=0, tokenId=_bond_id
+    IBondNFT.burn(
+        contract_address=bond_address, tokenId=_bond_id
     );
 
     return ();
@@ -243,6 +251,10 @@ func chicken_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     // TODO DO THIS REQUIRE
 
     // delete idToBondData[_bondID];
+
+    let bond_data = BondData(lusd_amount=Uint256(0,0), start_time=0);
+    id_to_bond_data_.write(_bond_id, bond_data);
+
     // totalPendingLUSD -= bond.lusdAmount;
     let (total_pending) = total_pending_LUSD_.read();
     let (total: Uint256) = SafeUint256.sub_le(total_pending, data.lusd_amount);
@@ -257,13 +269,15 @@ func chicken_in{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     // bondNFT.burn(_bondID);
     let (bond_address) = bond_address_.read();
 
-    IBondNFT.transferFrom(
-        contract_address=bond_address, from_=caller_address, to=0, tokenId=_bond_id
+    IBondNFT.burn(
+        contract_address=bond_address, tokenId=_bond_id
     );
+
 
     return ();
 }
 
+@external
 func redeem{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     _sLUSD_to_redeem: Uint256
 ) {
@@ -330,8 +344,8 @@ func redeem{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (caller_address) = get_caller_address();
     let (blusd_address) = blusd_address_.read();
-    IBLUSD.transferFrom(
-        contract_address=blusd_address, sender=caller_address, recipient=0, amount=_sLUSD_to_redeem
+    IBLUSD.burn(
+        contract_address=blusd_address, account=caller_address, amount=_sLUSD_to_redeem
     );
 
     // // Send the LUSD to the redeemer

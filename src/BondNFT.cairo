@@ -134,9 +134,9 @@ func renounceOwnership{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func safeMint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     to: felt, tokenId: Uint256, data_len: felt, data: felt*, tokenURI: felt
 ) {
-    // Ownable.assert_only_owner();
+    Ownable.assert_only_owner();
     ERC721._safe_mint(to, tokenId, data_len, data);
-    // ERC721._set_token_uri(tokenId, tokenURI);
+    ERC721._set_token_uri(tokenId, tokenURI);
     return ();
 }
 
@@ -147,5 +147,14 @@ func mint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     Ownable.assert_only_owner();
     ERC721._mint(to, tokenId);
     ERC721._set_token_uri(tokenId, tokenURI);
+    return ();
+}
+
+@external
+func burn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    tokenId: Uint256
+) {
+    Ownable.assert_only_owner();
+    ERC721._burn(tokenId);
     return ();
 }

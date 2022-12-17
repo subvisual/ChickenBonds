@@ -41,6 +41,24 @@ namespace IOwnable {
 }
 
 @contract_interface
+namespace IBLUSD {
+    func approve(spender: felt, amount: Uint256) -> (success: felt) {
+    }
+    func mint(to: felt, amount: Uint256) {
+    }
+    func transferFrom(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {
+    }
+
+    func transfer(recipient: felt, amount: Uint256) -> (success: felt) {
+    }
+    func balanceOf(account: felt) -> (balance: Uint256) {
+    }
+
+    func allowance(owner: felt, spender: felt) -> (remaining: Uint256) {
+    }
+}
+
+@contract_interface
 namespace ILUSD {
     func approve(spender: felt, amount: Uint256) -> (success: felt) {
     }
@@ -268,6 +286,199 @@ func test_chicken_out{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
 
     let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
 
+    let (currect_balance) = uint256_eq(balance, Uint256(100000, 0));
+
+    assert currect_balance = 1;
+
+    let (balancee) = IBondNFT.balanceOf(contract_address=bonds_, account=ALICE);
+
+    let (currect_balancee) = uint256_eq(balancee, Uint256(0, 0));
+
+    assert currect_balancee = 1;
+
+    %{ stop_prank_manager() %}
+
+    return ();
+
+}
+
+
+@external
+func test_chicken_in{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
+    alloc_locals;
+    local lusd_: felt;
+    local blusd_: felt;
+    local bonds_: felt;
+    local chicken_bonds_: felt;
+    local alice: felt;
+    local admin: felt;
+
+    %{
+        ids.lusd_ = context.lusd
+        ids.blusd_ = context.blusd
+        stop_prank_lusd= start_prank(ids.ADMIN, target_contract_address= context.lusd)
+    %}
+    ILUSD.mint(contract_address=lusd_, to=ALICE, amount=Uint256(100000, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(100000, 0));
+
+    assert currect_balance = 1;
+
+    %{
+        stop_prank_lusd()
+        ids.chicken_bonds_ = context.chicken_bonds
+        stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
+    %}
+    ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+
+    let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
+    let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
+    assert check_allowance = 1;
+
+    %{
+        stop_prank_lusd()
+        ids.chicken_bonds_ = context.chicken_bonds
+        ids.bonds_ = context.bond
+        stop_prank_manager = start_prank(ids.ALICE, target_contract_address= context.chicken_bonds)
+    %}
+
+    ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balancee) = IBondNFT.balanceOf(contract_address=bonds_, account=ALICE);
+
+    let (currect_balancee) = uint256_eq(balancee, Uint256(1, 0));
+
+    assert currect_balancee = 1;
+
+    %{
+        stop_prank_manager()
+        ids.chicken_bonds_ = context.chicken_bonds
+        ids.bonds_ = context.bond
+        stop_prank_manager = start_prank(ids.ALICE, target_contract_address= context.chicken_bonds)
+    %}
+
+    ChickenBondManager.chicken_in(contract_address=chicken_bonds_, _bond_id=Uint256(1, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = IBLUSD.balanceOf(contract_address=blusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(0, 0));
+
+    assert currect_balance = 1;
+
+    let (balancee) = IBondNFT.balanceOf(contract_address=bonds_, account=ALICE);
+
+    let (currect_balancee) = uint256_eq(balancee, Uint256(0, 0));
+
+    assert currect_balancee = 1;
+
+    %{ stop_prank_manager() %}
+
+    return ();
+
+}
+
+@external
+func test_chicken_in_after_timelapse{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
+    alloc_locals;
+    local lusd_: felt;
+    local blusd_: felt;
+    local bonds_: felt;
+    local chicken_bonds_: felt;
+    local alice: felt;
+    local admin: felt;
+
+    %{
+        ids.lusd_ = context.lusd
+        ids.blusd_ = context.blusd
+        stop_prank_lusd= start_prank(ids.ADMIN, target_contract_address= context.lusd)
+    %}
+    ILUSD.mint(contract_address=lusd_, to=ALICE, amount=Uint256(100000, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(100000, 0));
+
+    assert currect_balance = 1;
+
+    %{
+        stop_prank_lusd()
+        ids.chicken_bonds_ = context.chicken_bonds
+        stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
+    %}
+    ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+
+    let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
+    let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
+    assert check_allowance = 1;
+
+    %{
+        stop_prank_lusd()
+        ids.chicken_bonds_ = context.chicken_bonds
+        ids.bonds_ = context.bond
+        stop_prank_manager = start_prank(ids.ALICE, target_contract_address= context.chicken_bonds)
+    %}
+
+    ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balancee) = IBondNFT.balanceOf(contract_address=bonds_, account=ALICE);
+
+    let (currect_balancee) = uint256_eq(balancee, Uint256(1, 0));
+
+    assert currect_balancee = 1;
+
+    %{
+        stop_prank_manager()
+        ids.chicken_bonds_ = context.chicken_bonds
+        ids.bonds_ = context.bond
+        stop_prank_manager = start_prank(ids.ALICE, target_contract_address= context.chicken_bonds)
+        stop_warp = warp(360000, target_contract_address= context.chicken_bonds)
+
+    %}
+
+
+
+    ChickenBondManager.chicken_in(contract_address=chicken_bonds_, _bond_id=Uint256(1, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = IBLUSD.balanceOf(contract_address=blusd_, account=ALICE);
+
     let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
 
     assert currect_balance = 1;
@@ -277,6 +488,122 @@ func test_chicken_out{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBui
     let (currect_balancee) = uint256_eq(balancee, Uint256(0, 0));
 
     assert currect_balancee = 1;
+
+    %{ stop_prank_manager() %}
+
+    return ();
+
+}
+
+@external
+func test_redeem{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
+    alloc_locals;
+    local lusd_: felt;
+    local blusd_: felt;
+    local bonds_: felt;
+    local chicken_bonds_: felt;
+    local alice: felt;
+    local admin: felt;
+
+    %{
+        ids.lusd_ = context.lusd
+        ids.blusd_ = context.blusd
+        stop_prank_lusd= start_prank(ids.ADMIN, target_contract_address= context.lusd)
+    %}
+    ILUSD.mint(contract_address=lusd_, to=ALICE, amount=Uint256(100000, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(100000, 0));
+
+    assert currect_balance = 1;
+
+    %{
+        stop_prank_lusd()
+        ids.chicken_bonds_ = context.chicken_bonds
+        stop_prank_lusd = start_prank(ids.ALICE, target_contract_address= context.lusd)
+    %}
+    ILUSD.approve(contract_address=lusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+    IBLUSD.approve(contract_address=blusd_, spender=chicken_bonds_, amount=Uint256(100000, 0));
+
+    let (allowance) = ILUSD.allowance(contract_address=lusd_, owner=ALICE, spender=chicken_bonds_);
+    let (check_allowance) = uint256_eq(allowance, Uint256(100000, 0));
+    assert check_allowance = 1;
+
+    %{
+        stop_prank_lusd()
+        ids.chicken_bonds_ = context.chicken_bonds
+        ids.bonds_ = context.bond
+        stop_prank_manager = start_prank(ids.ALICE, target_contract_address= context.chicken_bonds)
+    %}
+
+    ChickenBondManager.create_bond(contract_address=chicken_bonds_, lusd_amount=Uint256(50000, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balancee) = IBondNFT.balanceOf(contract_address=bonds_, account=ALICE);
+
+    let (currect_balancee) = uint256_eq(balancee, Uint256(1, 0));
+
+    assert currect_balancee = 1;
+
+    %{
+        stop_prank_manager()
+        ids.chicken_bonds_ = context.chicken_bonds
+        ids.bonds_ = context.bond
+        stop_prank_manager = start_prank(ids.ALICE, target_contract_address= context.chicken_bonds)
+        stop_warp = warp(360000, target_contract_address= context.chicken_bonds)
+
+    %}
+
+
+
+    ChickenBondManager.chicken_in(contract_address=chicken_bonds_, _bond_id=Uint256(1, 0));
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=chicken_bonds_);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = IBLUSD.balanceOf(contract_address=blusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
+
+    let (balancee) = IBondNFT.balanceOf(contract_address=bonds_, account=ALICE);
+
+    let (currect_balancee) = uint256_eq(balancee, Uint256(0, 0));
+
+    assert currect_balancee = 1;
+
+    //test redeem
+
+
+    ChickenBondManager.redeem(contract_address=chicken_bonds_, _sLUSD_to_redeem=Uint256(50000, 0));
+
+    let (balance) = IBLUSD.balanceOf(contract_address=blusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(0, 0));
+
+    assert currect_balance = 1;
+
+    let (balance) = ILUSD.balanceOf(contract_address=lusd_, account=ALICE);
+
+    let (currect_balance) = uint256_eq(balance, Uint256(50000, 0));
+
+    assert currect_balance = 1;
 
     %{ stop_prank_manager() %}
 
