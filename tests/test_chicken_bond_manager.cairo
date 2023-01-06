@@ -160,12 +160,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         stop_prank_blusd()
         stop_prank_yearn_lusd()
 
-        stop_prank_lusd = start_prank(context.chicken_bonds, target_contract_address= context.lusd)
     %}
-    ILUSD.approve(contract_address=lusd, spender=chicken_bonds_, amount=Uint256(100000, 0));
-    ILUSD.approve(contract_address=lusd, spender=yearn_lusd, amount=Uint256(100000, 0));
-
-    %{ stop_prank_lusd() %}
 
     return ();
 }

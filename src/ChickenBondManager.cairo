@@ -50,6 +50,8 @@ namespace ILUSD {
     }
     func balanceOf(account: felt) -> (balance: Uint256) {
     }
+    func approve(spender: felt, amount: Uint256) -> (success: felt) {
+    }
 }
 
 @contract_interface
@@ -120,6 +122,10 @@ func id_to_bond_data_(id: Uint256) -> (data: BondData) {
 func total_pending_LUSD_() -> (value: Uint256) {
 }
 
+@storage_var
+func bond_id_() -> (value: Uint256) {
+}
+
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     _bond_address: felt,
@@ -135,6 +141,13 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     mock_curve_pool_address_.write(_mock_curve_pool_address);
     mock_yearn_lusd_vault_address_.write(_mock_yearn_lusd_vault_address);
     mock_yearn_curve_vault_address_.write(_mock_yearn_curve_vault_address);
+    let low = 2**128 -1;
+    let high = 2**128 -1;
+    ILUSD.approve(contract_address=_lusd_address, spender=_mock_yearn_lusd_vault_address, amount=Uint256(low, high));
+
+    let bond_id = Uint256(1, 0);
+    bond_id_.write(bond_id);
+
 
     return ();
 }
@@ -146,7 +159,6 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     alloc_locals;
     let (caller_address) = get_caller_address();
 
-    let token_id = Uint256(1, 0);
     let len = 3;
 
     let (data_ptr) = alloc();
@@ -155,11 +167,16 @@ func create_bond{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert [data_ptr + 2] = 25;
 
     let (bond_address) = bond_address_.read();
-    IBondNFT.mint(contract_address=bond_address, to=caller_address, tokenId=token_id, tokenURI=len);
+    let (bond_id) = bond_id_.read();
+    IBondNFT.mint(contract_address=bond_address, to=caller_address, tokenId=bond_id, tokenURI=len);
+
+    let one = Uint256(1,0);
+    let (new_bond_id : Uint256) = SafeUint256.add(bond_id, one);
+    bond_id_.write(new_bond_id);
 
     let (timestamp) = get_block_timestamp();
     let bond_data = BondData(lusd_amount=lusd_amount, start_time=timestamp);
-    id_to_bond_data_.write(token_id, bond_data);
+    id_to_bond_data_.write(bond_id, bond_data);
 
     let (total_pending) = total_pending_LUSD_.read();
     let (new_amount: Uint256) = SafeUint256.add(total_pending, lusd_amount);
