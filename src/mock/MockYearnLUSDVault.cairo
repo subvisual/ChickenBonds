@@ -9,6 +9,8 @@ from starkware.starknet.common.syscalls import get_caller_address, get_contract_
 from openzeppelin.token.erc20.library import ERC20
 from openzeppelin.access.ownable.library import Ownable
 
+//Contract used to mock a yearn vault for LUSD
+
 @contract_interface
 namespace ILUSD {
     func transferFrom(sender: felt, recipient: felt, amount: Uint256) -> (success: felt) {

@@ -10,6 +10,8 @@ from openzeppelin.introspection.erc165.library import ERC165
 from openzeppelin.access.ownable.library import Ownable
 from starkware.starknet.common.syscalls import get_caller_address
 
+//Contract used to represent the Bonds created by the Chicken bond manager
+
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner: felt) {
     ERC721.initializer('Bonds', 'BONDS');

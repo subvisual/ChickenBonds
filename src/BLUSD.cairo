@@ -8,6 +8,8 @@ from starkware.cairo.common.uint256 import Uint256
 from openzeppelin.token.erc20.library import ERC20
 from openzeppelin.access.ownable.library import Ownable
 
+//Contract used to represent the boosted tokens created by the chicken bond manager
+
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner: felt) {
     ERC20.initializer('BLUSD', 'BLUSD', 18);

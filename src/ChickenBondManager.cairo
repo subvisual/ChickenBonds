@@ -9,6 +9,12 @@ from starkware.starknet.common.syscalls import get_caller_address, get_contract_
 from starkware.cairo.common.alloc import alloc
 from openzeppelin.security.safemath.library import SafeUint256
 
+// This contract is responsable for:
+// Minting, burning BondNFT
+// Controlling chicken in and chicken out for active bonds
+// Minting and burning BLUSD
+// Managing the pending, reserve and pending buckets on the previous refered events
+
 @contract_interface
 namespace IBondNFT {
     func mint(to: felt, tokenId: Uint256, tokenURI: felt) {
